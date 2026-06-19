@@ -1,0 +1,47 @@
+name: "reflutter magic-strings"
+description: "l10n tripwire — fail on hardcoded user-facing strings in enforced dirs. Shared, versioned, public; no per-repo script copy."
+author: "luisburgos"
+
+# Usage in a consuming app's workflow:
+#   jobs:
+#     magic-strings:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: actions/checkout@v6
+#         - uses: luisburgos/reflutter_workflows/magic-strings@v1
+#           with:
+#             enforced-dirs: lib            # space-separated; default: lib
+#             arb-path: lib/shared/l10n/arb/app_en.arb
+#
+# This action lives in a PUBLIC repo so ANY repo's CI GITHUB_TOKEN can fetch it
+# (a cross-repo action is only fetchable when its repo is public — the default
+# token is scoped to the workflow's own repo). GitHub checks this repo out
+# (at the pinned ref) into
+# ${{ github.action_path }} when the app references the action, so the tripwire
+# script ships WITH the action — the app repo keeps no copy in CI. The check
+# runs against the app's code in ${{ github.workspace }}.
+
+inputs:
+  enforced-dirs:
+    description: "Space-separated dirs to enforce (e.g. 'lib lib/feature'). Default: lib."
+    required: false
+    default: "lib"
+  arb-path:
+    description: "ARB path shown in the fix hint."
+    required: false
+    default: "lib/shared/l10n/arb/app_en.arb"
+  working-directory:
+    description: "App root to check (default: the workspace)."
+    required: false
+    default: "."
+
+runs:
+  using: "composite"
+  steps:
+    - name: 🔤 No hardcoded UI strings in l10n-enforced dirs
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MAGIC_STRINGS_DIRS: ${{ inputs.enforced-dirs }}
+        MAGIC_STRINGS_ARB: ${{ inputs.arb-path }}
+      run: bash "${{ github.action_path }}/check-magic-strings.sh"
